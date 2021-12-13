@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>PetSpeak</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <style>
+        html,
+        body {
+            height: 100%;
+            background-color: #062230;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app" class="container pt-5">
+        <div class="card" style="background-color: #ffffff12;">
+            <div class="card-body">
+                <h5 class="card-title">🐶PetSpeak🔊</h5>
+
+                <!-- <p class="card-text"></p> -->
+                <a v-if="!isRunning" class="btn btn-lg btn-success py-1" href="#" role="button" v-on:click="run">Start
+                    PetSpeak</a>
+                <a v-else class="btn btn-lg btn-danger py-1" href="#" role="button" v-on:click="run">Stop PetSpeak</a>
+
+                <p style="margin-top:1rem;">
+                    <span class="badge rounded-pill bg-secondary">Datapoints: <span
+                            id="data-count">{{dataPointCount}}</span></span>
+                    <span class="badge rounded-pill">Peaks: <span id="peaks">{{peakCount}}</span></span>
+                    <span class="badge rounded-pill">Last Peak: <span id="last-peak">{{lastPeak}}</span></span>
+
+                </p>
+                <p>
+                    <span class="badge rounded-pill bg-orange">Last Message: <span
+                            id="last-msg">{{lastMessage}}</span></span>
+                </p>
+                <div>
+                    <canvas id="dataChart"></canvas>
+                </div>
+                <div id="log">
+                </div>
+
+                <div id="settings" style="background-color: #ffffff2d; padding:10px; border-radius: 5px;">
+                    <button class="btn" v-on:click="showSettings=!showSettings" style="color:white">⚙ Settings
+                        <span v-if="showSettings">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                class="bi bi-caret-up-fill" viewBox="0 0 16 16">
+                                <path
+                                    d="m7.247 4.86-4.796 5.481c-.566.647-.106 1.659.753 1.659h9.592a1 1 0 0 0 .753-1.659l-4.796-5.48a1 1 0 0 0-1.506 0z" />
+                            </svg>
+                        </span>
+                        <span v-else>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                class="bi bi-caret-down-fill" viewBox="0 0 16 16">
+                                <path
+                                    d="M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z" />
+                            </svg>
+                        </span>
+                    </button>
+                    <div v-if="showSettings">
+                        <p>
+                        <h6>🔊 Voice</h6>
+                        <label class="form-label">Voice Pitch - {{voicePitch}}</label>
+                        <input type="range" class="form-range" v-model="voicePitch" min="0" max="2" step="0.1">
+                        <label class="form-label">Voice Rate - {{voiceRate}}</label>
+                        <input type="range" class="form-range" v-model="voiceRate" min="0.1" max="10" step="0.1">
+                        <label class="form-label">Voice Custom Message</label>
+                        <input class="form-control" v-model="voiceCustomMessage">
+                        <!-- <label class="form-label">Voice Name</label>
+                                <select v-model="voiceName">
+                                    <option v-for="voice in voiceNames" v-bind:value="voice">
+                                        {{ voice }}
+                                    </option>
+                                </select> -->
+                        </p>
+                        <p>
+                        <h6>📈 Pattern</h6>
+                        <label class="form-label">Check Pattern Every X Data Points</label>
+                        <input class="form-control" v-model="checkPatternEveryPoints">
+                        <label class="form-label">Count of Peaks to Trigger Voice</label>
+                        <input class="form-control" v-model="checkPatternPeakCount">
+                        <label class="form-label">Min Delta From Average For Peak</label>
+                        <input class="form-control" v-model="checkPatternMinDeltaFromAverageForPeak">
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14"></script> FOR PRODUCTION -->
+
+    <script>
+
+
+        var colors = ['#0dcaf0', '#dc3545', '#6f42c1', '#fd7e14']
+        var msg = new SpeechSynthesisUtterance();
+        var voices = window.speechSynthesis.getVoices().map(a => a.name);
+
+        //add invisible video to prevent screen going off on mobile phone
+        // Create the video element with all it's attributes
+        const vueInsomnia = document.createElement("video");
+        vueInsomnia.setAttribute("id", "vue-insomnia");
+        vueInsomnia.setAttribute("style", "position: absolute; top: -10px; left: -10px;");
+        vueInsomnia.setAttribute("loop", "");
+        vueInsomnia.setAttribute("playsinline", "");
+        vueInsomnia.setAttribute("height", "10");
+        vueInsomnia.setAttribute("width", "10");
+        document.body.appendChild(vueInsomnia);
+
+        // Create the source element (child of video el) with the source of the mp4
+        const vueInsomniaSource = document.createElement("source");
+        vueInsomniaSource.setAttribute("type", "video/mp4");
+        vueInsomniaSource.setAttribute(
+            "src",
+            "data:video/mp4;base64,AAAAIGZ0eXBtcDQyAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAACKBtZGF0AAAC8wYF///v3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE0MiByMjQ3OSBkZDc5YTYxIC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcHlsZWZ0IDIwMDMtMjAxNCAtIGh0dHA6Ly93d3cudmlkZW9sYW4ub3JnL3gyNjQuaHRtbCAtIG9wdGlvbnM6IGNhYmFjPTEgcmVmPTEgZGVibG9jaz0xOjA6MCBhbmFseXNlPTB4MToweDExMSBtZT1oZXggc3VibWU9MiBwc3k9MSBwc3lfcmQ9MS4wMDowLjAwIG1peGVkX3JlZj0wIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MCA4eDhkY3Q9MCBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0wIHRocmVhZHM9NiBsb29rYWhlYWRfdGhyZWFkcz0xIHNsaWNlZF90aHJlYWRzPTAgbnI9MCBkZWNpbWF0ZT0xIGludGVybGFjZWQ9MCBibHVyYXlfY29tcGF0PTAgY29uc3RyYWluZWRfaW50cmE9MCBiZnJhbWVzPTMgYl9weXJhbWlkPTIgYl9hZGFwdD0xIGJfYmlhcz0wIGRpcmVjdD0xIHdlaWdodGI9MSBvcGVuX2dvcD0wIHdlaWdodHA9MSBrZXlpbnQ9MzAwIGtleWludF9taW49MzAgc2NlbmVjdXQ9NDAgaW50cmFfcmVmcmVzaD0wIHJjX2xvb2thaGVhZD0xMCByYz1jcmYgbWJ0cmVlPTEgY3JmPTIwLjAgcWNvbXA9MC42MCBxcG1pbj0wIHFwbWF4PTY5IHFwc3RlcD00IHZidl9tYXhyYXRlPTIwMDAwIHZidl9idWZzaXplPTI1MDAwIGNyZl9tYXg9MC4wIG5hbF9ocmQ9bm9uZSBmaWxsZXI9MCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAAOWWIhAA3//p+C7v8tDDSTjf97w55i3SbRPO4ZY+hkjD5hbkAkL3zpJ6h/LR1CAABzgB1kqqzUorlhQAAAAxBmiQYhn/+qZYADLgAAAAJQZ5CQhX/AAj5IQAD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"
+        );
+        document.getElementById("vue-insomnia").appendChild(vueInsomniaSource);
+
+
+
+        var app = new Vue({
+            el: '#app',
+            data: {
+                dataPointCount: 0,
+                
+                checkPatternEveryPoints: 50,
+                checkPatternPeakCount: 7,
+                checkPatternMinDeltaFromAverageForPeak: 2,
+                isRunning: false,
+                peakCount: 0,
+                lastPeak: '',
+                lastMessage: '',
+                showSettings: false,
+
+                voicePitch: 0.1,
+                voiceRate: 1.5,
+                voiceName: '',
+                voiceCustomMessage: '',
+                voiceMessages: [
+
+                    //dog
+                    "Roaming my kingdom.",
+                    "I'm on a mission.", 
+                    "Treatz and Snoozing, Treatz and Snoozing.", 
+                    "They see me rolling! Tryna catch me ridin' dirty.", 
+                    "It's me, Berkeley! I like cheese and turkey.", 
+                    "Pitter patter, let's get at urr", 
+                    "LETS GO SITE SNIFFING!", 
+                    "Anyone want to go for a walk?",
+                    "Want to see me lift stuff?",
+                    "Where did I leave that bone?",
+
+                    // //motivational
+                    // "Be the person your dog thinks you are.",
+                    // "If there is a will, there is a way.",
+                    // "Don't worry, be happy.",
+                    // "Nothing will work unless you do.",
+                    // "Don’t limit your challenges. Challenge your limits.",
+                    // "In the middle of every difficulty lies opportunity.",
+                    // "Go the extra mile. It’s never crowded there.",
+                    // "Make each day your masterpiece.",
+                    // "If you obey all the rules, you miss all the fun.",
+                    // "When you reach the end of your rope, tie a knot and hang out.",
+                    // "If you want to fly give up everything that weighs you down.",
+                    // "I never lose. Either I win or learn.",
+                    // "Today is your opportunity to build the tomorrow you want.",
+                    // "Focus on being productive instead of busy.",
+
+                    // //fortune cookies
+                    // "The road to riches is paved with homework.",
+                    // "I am worth a fortune.",
+                    // "Don’t let statistics do a number on you.",
+                    // "Do not mistake temptation for opportunity.",
+                    // "If you look back, you’ll soon be going that way.",
+                    // "It is a good day to have a good day.",
+                    // "Hard work pays off in the future. Laziness pays off now.",
+                    // "Change is inevitable, except for vending machines.",
+                    // "If a turtle doesn’t have a shell, is it naked or homeless?",
+
+                    // //jokes
+                    // "Why don’t scientists trust atoms? Because they make up everything.",
+                    // "What kind of exercise do lazy people do? Diddly-squats.",
+                    // "What do you call a fake noodle? An impasta.",
+                    
+                    
+                ],
+
+                chart: undefined,
+                chartData: {
+                    labels: [0],
+                    datasets: [
+                        {
+                            label: 'X',
+                            backgroundColor: colors[0],
+                            borderColor: colors[0],
+                            data: [0],
+                        },
+                        {
+                            label: 'Y',
+                            backgroundColor: colors[1],
+                            borderColor: colors[1],
+                            data: [0],
+                        },
+                        {
+                            label: 'Z',
+                            backgroundColor: colors[2],
+                            borderColor: colors[2],
+                            data: [0],
+                        },
+                        {
+                            label: 'XYZ',
+                            backgroundColor: colors[3],
+                            borderColor: colors[3],
+                            data: [0],
+                        },
+                    ]
+                },
+
+            },
+            computed: {
+                chartConfig() {
+                    var x = {
+                        type: 'line',
+                        data: {
+                            labels: this.chartData.labels,
+                            datasets: this.chartData.datasets,
+                        },
+                        options: {
+                            animation: {
+                                duration: 0
+                            }
+                        }
+                    }
+                    return x;
+                },
+                voiceNames() {
+                    return voices;
+                }
+            },
+            mounted: function () {
+                //setup chart
+                this.dataChart = new Chart(document.getElementById('dataChart'), this.chartConfig);
+
+            },
+            methods: {
+                updateDataChart: function (chart, newvalue) {
+                    //show first 1000 points
+                    var max = 50;
+                    var len = chart.data.labels.length;
+                    var x = chart.data.labels[len - 1] + 1
+                    chart.data.labels.push(x);
+                    chart.data.datasets[0].data.push(newvalue.accelerationIncludingGravity.x);
+                    chart.data.datasets[1].data.push(newvalue.accelerationIncludingGravity.y);
+                    chart.data.datasets[2].data.push(newvalue.accelerationIncludingGravity.z);
+                    chart.data.datasets[3].data.push(newvalue.accelerationIncludingGravity.x + newvalue.accelerationIncludingGravity.y + newvalue.accelerationIncludingGravity.z);
+
+                    if (len > max) {
+                        chart.data.labels.shift();
+                        chart.data.datasets[0].data.shift();
+                        chart.data.datasets[1].data.shift();
+                        chart.data.datasets[2].data.shift();
+                        chart.data.datasets[3].data.shift();
+                    }
+                    chart.update();
+                },
+
+
+                checkPattern: function (data) {
+                    var x = this.findPeaksAndTroughs(data).peaks.length
+                    // document.getElementById("peaks").innerHTML = x;
+                    this.peakCount = x;
+                    if (x >= this.checkPatternPeakCount) {
+                        var m = ''
+                        var options = this.voiceMessages;
+                        if (this.voiceCustomMessage == '') {
+                            var random = Math.floor(Math.random() * options.length);
+                            m = options[random]
+                        } else {
+                            m = this.voiceCustomMessage
+                        }
+
+                        this.say(m)
+                        //document.getElementById("last-peak").innerHTML = x;
+                        // document.getElementById("last-msg").innerHTML = options[random];
+                        this.lastPeak = x;
+                        this.lastMessage = m;
+                    }
+                },
+
+                say: function (txt) {
+                    // var msg = new SpeechSynthesisUtterance();
+                    //msg.lang= 'Google UK English Male'; //'Google UK English Male'; // for US english, en-GR for british
+                    msg.text = txt;
+                    msg.pitch = this.voicePitch;
+                    msg.rate = this.voiceRate;
+                    // msg.voice = window.speechSynthesis.getVoices().filter(function(voice) { 
+                    //     return voice.name == this.voiceName; 
+                    //     //return voice.name.includes('UK') || voice.name.includes('Kingdom') || voice.name.includes('Australia'); 
+                    // })[0];
+                    // msg.voice = window.speechSynthesis.getVoices()[0];
+                    window.speechSynthesis.speak(msg);
+                },
+
+
+                run: function () {
+                    // e.preventDefault();
+
+                    // Request permission for iOS 13+ devices
+                    if (
+                        DeviceMotionEvent &&
+                        typeof DeviceMotionEvent.requestPermission === "function"
+                    ) {
+                        DeviceMotionEvent.requestPermission();
+                    }
+
+                    if (this.isRunning) {
+                        window.removeEventListener("devicemotion", this.handleMotion);
+                        // window.removeEventListener("deviceorientation", handleOrientation);
+                        this.isRunning = false;
+                        vueInsomnia.pause();
+                    } else {
+                        window.addEventListener("devicemotion", this.handleMotion);
+                        // window.addEventListener("deviceorientation", handleOrientation);
+                        this.isRunning = true;
+                        vueInsomnia.play();
+                    }
+                },
+
+                handleMotion: function (event) {
+                    // updateFieldIfNotNull('Accelerometer_gx', event.accelerationIncludingGravity.x);
+                    // updateFieldIfNotNull('Accelerometer_gy', event.accelerationIncludingGravity.y);
+                    // updateFieldIfNotNull('Accelerometer_gz', event.accelerationIncludingGravity.z);
+
+                    // updateFieldIfNotNull('Accelerometer_x', event.acceleration.x);
+                    // updateFieldIfNotNull('Accelerometer_y', event.acceleration.y);
+                    // updateFieldIfNotNull('Accelerometer_z', event.acceleration.z);
+
+                    // updateFieldIfNotNull('Accelerometer_i', event.interval, 2);
+
+                    // updateFieldIfNotNull('Gyroscope_z', event.rotationRate.alpha);
+                    // updateFieldIfNotNull('Gyroscope_x', event.rotationRate.beta);
+                    // updateFieldIfNotNull('Gyroscope_y', event.rotationRate.gamma);
+
+                    // incrementEventCount();
+                    this.dataPointCount++;
+                    this.updateDataChart(this.dataChart, event);
+
+                    if (this.dataPointCount % this.checkPatternEveryPoints === 0) { //check pattern every 10
+                        this.checkPattern(this.dataChart.data.datasets[3].data);
+                    }
+                },
+
+                handleOrientation: function (event) {
+                    // updateFieldIfNotNull('Orientation_a', event.alpha);
+                    // updateFieldIfNotNull('Orientation_b', event.beta);
+                    // updateFieldIfNotNull('Orientation_g', event.gamma);
+                    // incrementEventCount();
+                    this.dataPointCount++;
+                },
+
+
+                findPeaksAndTroughs: function (array) {
+                    var start = 1;                        // Starting index to search
+                    var end = array.length - 2;           // Last index to search
+                    var obj = { peaks: [], troughs: [] };// Object to store the indexs of peaks/thoughs
+                    var avg = getAverage(array);
+                    var minDelta = this.checkPatternMinDeltaFromAverageForPeak;//2;
+
+                    for (var i = start; i <= end; i++) {
+                        var current = array[i];
+                        var last = array[i - 1];
+                        var next = array[i + 1];
+
+                        if (Math.abs(avg - current) > minDelta) {
+
+                            if (current > next && current > last)
+                                obj.peaks.push(i);
+                            else if (current < next && current < last)
+                                obj.troughs.push(i);
+
+                        }
+                    }
+                    return obj;
+                }
+
+
+            }
+
+        })
+
+
+
+        //helper functions
+        function getSum(array) {
+            const x = array.reduce((a, b) => a + b, 0);
+            return x;
+        }
+
+        function getMax(array) {
+            const x = Math.max(...array);
+            return x;
+        }
+
+        function getMin(array) {
+            const x = Math.min(...array);
+            return x;
+        }
+
+        function getMidpoint(array) {
+            const min = getMin(array);
+            const max = getMax(array);
+            const mid = ((min + max) / 2) || 0;
+            return mid;
+        }
+
+        function getAverage(array) {
+            const sum = getSum(array);
+            const avg = (sum / array.length) || 0;
+            return avg;
+        }
+
+
+
+
+
+
+
+
+
+        // function incrementEventCount() {
+        //     let counterElement = document.getElementById("data-count");
+        //     dataPointCount = dataPointCount+1;
+        //     counterElement.innerHTML = dataPointCount; //eventCount + 1;
+        // }
+
+        // function updateFieldIfNotNull(fieldName, value, precision = 10) {
+        //     if (value != null)
+        //         document.getElementById(fieldName).innerHTML = value.toFixed(precision);
+        // }
+
+
+
+
+
+
+
+
+    </script>
+</body>
+
+</html>
