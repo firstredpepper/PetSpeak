@@ -338,9 +338,13 @@
                             m = this.voiceCustomMessage
                         }
 
-//                         this.recentVoiceMessages.push(m);
-//                         this.recentVoiceMessages = this.recentVoiceMessages.slice(-3);
 
+
+                        this.recentVoiceMessages.push(m);
+var xx = Math.min(this.recentVoiceMessages.length,3)
+if(xx>3){
+                     this.recentVoiceMessages = this.recentVoiceMessages.slice(xx);
+}
                         this.say(m)
                         //document.getElementById("last-peak").innerHTML = x;
                         // document.getElementById("last-msg").innerHTML = options[random];
@@ -352,12 +356,12 @@
                 getMessage: function(){
                     var messageOptions = this.voiceMessages;
                     //remove ones that were selected recently
-//                     var recentMessages = this.recentVoiceMessages;
+                     var recentMessages = this.recentVoiceMessages;
 
-//                     var filteredOptions = messageOptions.filter(function(itm){
-//                         return recentMessages.indexOf(itm)==-1;
-//                         });;
-                    var filteredOptions = messageOptions;
+                     var filteredOptions = messageOptions.filter(function(itm){
+                         return recentMessages.indexOf(itm)==-1;
+                         });;
+                   // var filteredOptions = messageOptions;
 
                     var random = Math.floor(Math.random() * filteredOptions.length);
                     m = filteredOptions[random]
