@@ -148,37 +148,67 @@
                 voiceRate: 1.5,
                 voiceName: '',
                 voiceCustomMessage: '',
+                voiceMessagesRecent: [],
                 voiceMessages: [
 
-                    //dog
+                    // //dog
+                    // "Roaming my kingdom.",
+                    // "I'm on a mission.",
+                    // "Give me attention.",
+                    // "Don't leave me.",
+                    // "I know what crate means.",
+                    // "Treatz and Snoozing", 
+                    // "It's me, Berkeley!",
+                    // "I like cheese and turkey.", 
+                    // "Pitter patter, let's get at her", 
+                    // "I'm hunting for rabit.",
+                    // "LETS GO SITE SNIFFING!", 
+                    // "You'll never guess who I saw today!! That darn squirrel again!",
+                    // "I'm the boss!",
+                    // "Another busy day!",
+                    // "Back to the grind!",
+                    // "Did you forget about me?",
+                    // "Where you going?! Can I come?",
+                    // "Stop trying to make fetch happen! It's not going to happen!",
+                    // "I'd risk it for a biscuit!",
+                    // "I haven't eaten in an hour! That's seven dog hours!",
+                    // "I don't want to alarm anyone, but I haven't snacked in 15 minutes",
+                    // "Where's the chicken?",
+                    // "Don't forget the nuggets!",
+                    // "It wasn't me.",
+                    // "Anyone want to go for a walk?",
+                    // "Want to see me lift stuff?",
+                    // "I deserve a cookie",
+                    // "Where did I leave that bone?",
+
+                    //dog - Christmas messages
                     "Roaming my kingdom.",
+                    "Merry Christmas!",
                     "I'm on a mission.",
                     "Give me attention.",
-                    "Don't leave me.",
-                    "I know what crate means.",
                     "Treatz and Snoozing", 
                     "It's me, Berkeley!",
                     "I like cheese and turkey.", 
+                    "Merry Christmas!",
+                    "Merry Christmas!",
                     "Pitter patter, let's get at her", 
                     "I'm hunting for rabit.",
-                    "LETS GO SITE SNIFFING!", 
-                    "You'll never guess who I saw today!! That darn squirrel again!",
-                    "I'm the boss!",
-                    "Another busy day!",
-                    "Back to the grind!",
-                    "Did you forget about me?",
-                    "Where you going?! Can I come?",
+                    "Where are the presents?",
                     "Stop trying to make fetch happen! It's not going to happen!",
-                    "I'd risk it for a biscuit!",
                     "I haven't eaten in an hour! That's seven dog hours!",
+                    "Merry Christmas!",
                     "I don't want to alarm anyone, but I haven't snacked in 15 minutes",
                     "Where's the chicken?",
-                    "Don't forget the nuggets!",
                     "It wasn't me.",
+                    "I love you.",
+                    "Merry Christmas!",
+                    "Happy Holidays!",
+                    "I am on the nice list.",
+                    "Anyone want to donate some cheese to me?",
                     "Anyone want to go for a walk?",
-                    "Want to see me lift stuff?",
                     "I deserve a cookie",
-                    "Where did I leave that bone?",
+                    "Merry Christmas!",
+
 
                     // //motivational
                     // "Be the person your dog thinks you are.",
@@ -303,11 +333,13 @@
                         var m = ''
                         var options = this.voiceMessages;
                         if (this.voiceCustomMessage == '') {
-                            var random = Math.floor(Math.random() * options.length);
-                            m = options[random]
+                            m = this.getMessage();
                         } else {
                             m = this.voiceCustomMessage
                         }
+
+                        this.recentVoiceMessages.push(m);
+                        this.recentVoiceMessages = this.recentVoiceMessages.slice(-3);
 
                         this.say(m)
                         //document.getElementById("last-peak").innerHTML = x;
@@ -315,6 +347,21 @@
                         this.lastPeak = x;
                         this.lastMessage = m;
                     }
+                },
+
+                getMessage: function(){
+                    var messageOptions = this.voiceMessages;
+                    //remove ones that were selected recently
+                    var recentMessages = this.recentVoiceMessages;
+
+                    var filteredOptions = messageOptions.filter(function(itm){
+                        return recentMessages.indexOf(itm)==-1;
+                        });;
+
+                    var random = Math.floor(Math.random() * filteredOptions.length);
+                    m = filteredOptions[random]
+                 
+                    return m
                 },
 
                 say: function (txt) {
