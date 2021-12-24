@@ -341,8 +341,8 @@
 
 
                         this.recentVoiceMessages.push(m);
-var xx = Math.min(this.recentVoiceMessages.length,3)
-if(xx>3){
+var xx = 3
+if(this.recentVoiceMessages.length>xx){
                      this.recentVoiceMessages = this.recentVoiceMessages.slice(xx);
 }
                         this.say(m)
