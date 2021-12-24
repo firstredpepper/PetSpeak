@@ -354,9 +354,10 @@
                     //remove ones that were selected recently
                     var recentMessages = this.recentVoiceMessages;
 
-                    var filteredOptions = messageOptions.filter(function(itm){
-                        return recentMessages.indexOf(itm)==-1;
-                        });;
+//                     var filteredOptions = messageOptions.filter(function(itm){
+//                         return recentMessages.indexOf(itm)==-1;
+//                         });;
+                    var filteredOptions = messageOptions;
 
                     var random = Math.floor(Math.random() * filteredOptions.length);
                     m = filteredOptions[random]
