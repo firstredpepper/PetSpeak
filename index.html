@@ -339,11 +339,10 @@
                         }
 
 
-
-                        this.recentVoiceMessages.push(m);
+                        this.voiceMessagesRecent.push(m);
 var xx = 3
-if(this.recentVoiceMessages.length>xx){
-                     this.recentVoiceMessages = this.recentVoiceMessages.slice(xx);
+if(this.voiceMessagesRecent.length>xx){
+                     this.voiceMessagesRecent = this.voiceMessagesRecent.slice(xx);
 }
                         this.say(m)
                         //document.getElementById("last-peak").innerHTML = x;
@@ -356,7 +355,7 @@ if(this.recentVoiceMessages.length>xx){
                 getMessage: function(){
                     var messageOptions = this.voiceMessages;
                     //remove ones that were selected recently
-                     var recentMessages = this.recentVoiceMessages;
+                     var recentMessages = this.voiceMessagesRecent;
 
                      var filteredOptions = messageOptions.filter(function(itm){
                          return recentMessages.indexOf(itm)==-1;
